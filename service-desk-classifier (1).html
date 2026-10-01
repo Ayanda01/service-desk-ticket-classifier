@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Service Desk Ticket Classifier</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f5f7;--panel:#fff;--ink:#16202a;--mute:#5d6b78;--line:#dde3e8;--brand:#0b6e6e;--brand-ink:#fff;--side:#12232e;--crit:#b42318;--high:#c4560a;--med:#946200;--low:#2f6f3e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1419;--panel:#17202a;--ink:#e6ecf1;--mute:#93a1ae;--line:#2a3743;--brand:#3fb5b0;--brand-ink:#08201f;--side:#0a1015;--crit:#ff8a7d;--high:#ffa862;--med:#e8c15a;--low:#7fd18f}}
+:root[data-theme="dark"]{--bg:#0e1419;--panel:#17202a;--ink:#e6ecf1;--mute:#93a1ae;--line:#2a3743;--brand:#3fb5b0;--brand-ink:#08201f;--side:#0a1015;--crit:#ff8a7d;--high:#ffa862;--med:#e8c15a;--low:#7fd18f}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "IBM Plex Sans",system-ui,sans-serif;display:flex;min-height:100vh}
+aside{width:210px;background:var(--side);color:#cfd9e0;padding:18px 12px;flex-shrink:0}
+aside h1{font-size:15px;color:#fff;margin:0 8px 18px;font-weight:600}aside h1 small{display:block;font-weight:400;color:#8ea0ad;font-size:12px}
+aside button{display:block;width:100%;text-align:left;background:none;border:0;color:inherit;padding:9px 10px;border-radius:6px;font:inherit;cursor:pointer;margin-bottom:2px}
+aside button:hover{background:#1d3340}aside button.on{background:#0b6e6e;color:#fff}
+main{flex:1;padding:22px 26px;min-width:0;max-width:1100px}
+h2{font-size:20px;margin:0 0 16px;font-weight:600}h3{font-size:15px;margin:0 0 10px;font-weight:600}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;margin-bottom:16px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:6px;padding:12px 14px}
+.kpi b{display:block;font-size:26px;font-weight:600}.kpi span{color:var(--mute);font-size:12px}
+.two{display:grid;gap:16px;grid-template-columns:1fr 1fr}
+label{display:block;font-size:12px;color:var(--mute);margin-bottom:3px;font-weight:500}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--ink);font:inherit}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+.f{display:grid;gap:12px;grid-template-columns:1fr 1fr}.f .w{grid-column:1/-1}
+.btn{background:var(--brand);color:var(--brand-ink);border:0;padding:9px 18px;border-radius:5px;font:inherit;font-weight:600;cursor:pointer}
+.btn.sec{background:none;color:var(--ink);border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;color:var(--mute);font-weight:500}tbody tr{cursor:pointer}tbody tr:hover{background:var(--bg)}
+.sc{overflow-x:auto}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:500;border:1px solid currentColor}
+.Critical{color:var(--crit)}.High{color:var(--high)}.Medium{color:var(--med)}.Low{color:var(--low)}
+.bar{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px}.bar i{display:block;height:14px;background:var(--brand);border-radius:2px;min-width:2px}.bar span:first-child{width:130px;flex-shrink:0}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:12px 0}
+.meta div{font-size:12px;color:var(--mute)}.meta b{display:block;color:var(--ink);font-size:14px;font-weight:500}
+.conf{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:4px}.conf i{display:block;height:100%;background:var(--brand)}
+ol{padding-left:20px;margin:0}li{margin-bottom:4px}
+.resp{background:var(--bg);border-left:3px solid var(--brand);padding:10px 12px;border-radius:4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}.row>*{flex:1;min-width:140px}
+.hide{display:none}.note{color:var(--mute);font-size:12px}
+@media(max-width:760px){body{flex-direction:column}aside{width:100%;display:flex;gap:4px;padding:10px;overflow-x:auto}aside h1{display:none}aside button{width:auto;white-space:nowrap}main{padding:16px}.two,.f{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<aside><h1>IT Service Desk<small>Ticket Classifier</small></h1>
+<button data-v="dash" class="on">Dashboard</button><button data-v="new">Create ticket</button><button data-v="hist">Ticket history</button></aside>
+<main>
+<section id="dash"></section>
+<section id="new" class="hide">
+<h2>Create ticket</h2>
+<div class="card"><div class="f">
+<div><label for="cn">Customer name</label><input id="cn" placeholder="Jane Smith"></div>
+<div><label for="ce">Customer email</label><input id="ce" type="email" placeholder="jane.smith@company.com"></div>
+<div class="w"><label for="cs">Subject</label><input id="cs" placeholder="Short summary of the issue"></div>
+<div class="w"><label for="cd">Problem description</label><textarea id="cd" rows="5" placeholder="Describe the problem in plain English"></textarea></div>
+<div><label for="dt">Device type</label><select id="dt"><option>Laptop</option><option>Desktop</option><option>Tablet</option><option>Mobile phone</option><option>Printer</option><option>Other</option></select></div>
+<div><label for="os">Operating system</label><select id="os"><option>Windows 11</option><option>Windows 10</option><option>macOS</option><option>Linux</option><option>iOS</option><option>Android</option></select></div>
+<div><label for="dd">Date/time</label><input id="dd" type="datetime-local"></div>
+<div style="align-self:end"><button class="btn" id="go">Analyse Ticket</button> <button class="btn sec" id="ex">Load example</button></div>
+</div><p class="note hide" id="err" style="color:var(--crit)"></p></div>
+</section>
+<section id="det" class="hide"></section>
+<section id="hist" class="hide">
+<h2>Ticket history</h2>
+<div class="row"><input id="q" placeholder="Search ID, customer, subject"><select id="fc"></select><select id="fp"></select><select id="fs"></select></div>
+<div class="card sc"><table><thead><tr><th>Ticket ID</th><th>Date</th><th>Customer</th><th>Subject</th><th>Category</th><th>Priority</th><th>Team</th><th>Status</th></tr></thead><tbody id="tb"></tbody></table></div>
+</section>
+</main>
+<script>
+const CATS=["Network","Hardware","Software","Microsoft 365","Email","Account & Password","Printer","Security","VPN","Other"];
+const PRI=["Low","Medium","High","Critical"];
+const TEAMS=["Service Desk","Desktop Support","Network Support","Microsoft 365 Support","Security Team","Systems Administration"];
+const STAT=["Open","In Progress","Pending Customer","Resolved","Closed"];
+const CAT_TEAM={Network:"Network Support",Hardware:"Desktop Support",Software:"Desktop Support","Microsoft 365":"Microsoft 365 Support",Email:"Microsoft 365 Support","Account & Password":"Service Desk",Printer:"Desktop Support",Security:"Security Team",VPN:"Network Support",Other:"Service Desk"};
+// keyword: weight. Phrases score higher than single words.
+const KW={
+Network:{"wi-fi":4,wifi:4,"wireless":3,"internet":4,"website":3,"websites":3,"dns":4,"ethernet":4,"network":3,"no connection":3,"ip address":3,"gateway":3,"cannot browse":4,"can't browse":4,"lan":2,"router":3,"switch":1},
+Hardware:{"screen":3,"keyboard":4,"mouse":3,"battery":4,"won't turn on":5,"wont turn on":5,"will not turn on":5,"overheat":4,"fan":2,"monitor":3,"blue screen":4,"bsod":4,"hard drive":4,"disk":2,"cracked":4,"broken":3,"charger":3,"docking":3,"webcam":3,"headset":2,"freezes":2},
+Software:{"install":4,"installation":4,"crash":4,"crashes":4,"application":3,"app ":2,"software":4,"update":2,"error message":2,"licence":3,"license":3,"won't open":4,"not responding":4,"slow":1,"uninstall":4,"chrome":2,"browser":2,"excel":1},
+"Microsoft 365":{"teams":4,"onedrive":5,"sharepoint":5,"outlook":2,"word":2,"excel":3,"powerpoint":3,"microsoft 365":6,"office 365":6,"m365":6,"office":2,"shared drive":2,"mfa":1,"licence":1},
+Email:{"email":4,"emails":4,"mailbox":5,"inbox":4,"outlook":3,"spam":3,"send":1,"receive":1,"not receiving":4,"bounce":4,"attachment":3,"calendar":2,"mail":2,"delivery":2},
+"Account & Password":{"password":6,"locked out":6,"account locked":6,"login":4,"log in":4,"sign in":4,"username":4,"reset":3,"expired":3,"can't log":4,"cannot log":4,"forgot":4,"access denied":3,"permissions":3,"account":2},
+Printer:{"printer":6,"print":4,"printing":5,"toner":5,"paper jam":6,"scanner":4,"scan":3,"queue":2,"ink":4,"copier":4},
+Security:{"phishing":7,"malware":7,"virus":7,"ransomware":8,"suspicious":5,"hacked":7,"compromised":7,"breach":7,"stolen":5,"lost laptop":5,"scam":5,"unauthorised":5,"unauthorized":5,"antivirus":4,"spoof":4,"clicked a link":6,"encrypted":3,"data leak":6},
+VPN:{"vpn":8,"remote access":4,"working from home":2,"anyconnect":6,"globalprotect":6,"forticlient":6,"remote desktop":3,"rdp":4,"tunnel":3,"cannot connect remotely":4}
+};
+const STEPS={
+Network:["Check whether other websites are accessible.","Check the device's IP configuration (ipconfig /all).","Test connectivity to the default gateway.","Test DNS resolution (nslookup).","Restart the network adapter if necessary."],
+Hardware:["Confirm the exact fault and when it started.","Check power, cables, charger and docking connections.","Perform a full shutdown and restart.","Test with a known-good peripheral or power supply.","Check Device Manager and hardware diagnostics for errors.","Arrange a device swap or repair if the fault persists."],
+Software:["Confirm the application name, version and exact error message.","Restart the application and then the device.","Check for pending updates or recent changes.","Run the application as administrator or repair the installation.","Reinstall the application if the issue continues."],
+"Microsoft 365":["Check the Microsoft 365 service health dashboard.","Confirm the user has an active licence assigned.","Test access via the web portal in a private browser window.","Sign out and back in; clear cached credentials.","Escalate to Microsoft 365 Support if the issue is tenant-wide or persists."],
+Email:["Confirm whether the issue is sending, receiving or both.","Test access to the mailbox in Outlook on the web.","Check mailbox storage quota and junk/rules settings.","Review any bounce-back messages and run message trace.","Recreate the Outlook profile if only the desktop client is affected."],
+"Account & Password":["Verify the user's identity using the approved process.","Check whether the account is locked, disabled or expired in the directory.","Unlock the account or reset the password following policy.","Confirm MFA and self-service reset are working.","Ask the user to sign in and confirm access."],
+Printer:["Check the printer is powered on, online and has paper/toner.","Clear any paper jam and check for error lights.","Clear the print queue and restart the print spooler.","Confirm the correct printer driver and default printer.","Print a test page; escalate to Desktop Support if it still fails."],
+Security:["Do not delete anything; advise the user to stop using the affected device or account.","Isolate the device from the network if compromise is suspected.","Record the sender, links, file names and times involved.","Force a password reset and revoke active sessions if credentials may be exposed.","Escalate immediately to the Security Team following the incident process."],
+VPN:["Confirm the user has a working internet connection.","Check the VPN client version and credentials/MFA.","Reconnect or switch VPN gateway.","Check for firewall or antivirus blocking the client.","Reinstall the VPN client; escalate to Network Support if multiple users are affected."],
+Other:["Clarify the request and gather missing details from the customer.","Check the knowledge base for similar issues.","Reproduce the issue where possible.","Route to the most suitable team if the category becomes clear."]};
+const RESP={
+Network:"We have identified this as a network connectivity problem. Please confirm whether other devices on the same network can access the internet. We will then continue with connectivity and DNS troubleshooting.",
+Hardware:"We have identified this as a hardware issue. Please let us know exactly when the fault started and whether any physical damage occurred. We will arrange diagnostics or a replacement if needed.",
+Software:"We have identified this as a software issue. Please send us the application name and any error message you see. We will guide you through repair or reinstallation steps.",
+"Microsoft 365":"We have identified this as a Microsoft 365 issue. Please tell us whether it also happens when you sign in at office.com in a private browser window. We will check your licence and service health in the meantime.",
+Email:"We have identified this as an email issue. Please confirm whether you can access your mailbox through Outlook on the web and share any error or bounce-back message you received.",
+"Account & Password":"We have identified this as an account access issue. For your security we will first verify your identity. Please do not share your password with anyone; we will unlock or reset your account once verified.",
+Printer:"We have identified this as a printer issue. Please confirm the printer name or location and any error shown on its display. We will check the print queue and driver settings.",
+Security:"Thank you for reporting this promptly. We are treating it as a potential security incident. Please do not click anything further or delete any messages. Disconnect from the network if you can, and the Security Team will contact you shortly.",
+VPN:"We have identified this as a VPN connectivity issue. Please confirm that you can reach the internet without the VPN and tell us any error message the VPN client shows. We will then check your VPN access and client.",
+Other:"Thank you for contacting the Service Desk. We need a little more detail to route your request. Please describe what you were trying to do and what happened instead."};
+
+function classify(subject,desc){
+ const t=" "+(subject+" "+desc).toLowerCase()+" ";
+ const sc={};CATS.forEach(c=>sc[c]=0);
+ for(const c in KW)for(const k in KW[c])if(t.includes(k))sc[c]+=KW[c][k];
+ const sorted=Object.entries(sc).sort((a,b)=>b[1]-a[1]);
+ let [cat,top]=sorted[0];if(top<2)cat="Other";
+ const total=Object.values(sc).reduce((a,b)=>a+b,0);
+ let conf=cat==="Other"?45:Math.min(97,Math.round(50+45*(top/Math.max(total,1))*Math.min(1,top/8)+Math.min(top,10)));
+ if(cat!=="Other"&&sorted[1][1]>0&&top-sorted[1][1]<2)conf=Math.min(conf,62);
+ // priority
+ let p=1;const has=a=>a.some(k=>t.includes(k));
+ if(has(["cannot","can't","can not","unable","won't","not working","no access","down","locked out","failed","error"]))p=2;
+ if(has(["urgent","asap","deadline","presentation","client meeting","cannot work","can't work","unable to work","blocking"]))p=Math.max(p,2);
+ if(has(["slow","sometimes","intermittent","minor","when you can","how do i","request","would like","new "]))p=Math.min(p,p===2&&!has(["cannot","can't","unable"])?1:p);
+ if(has(["everyone","all users","whole office","entire office","multiple users","company-wide","outage","server down","whole team","all staff","everybody"]))p=3;
+ if(cat==="Security"){p=has(["ransomware","breach","hacked","compromised","data leak","encrypted","clicked a link","stolen"])?3:2}
+ if(cat==="Printer"&&p>1&&!has(["everyone","all users","whole office"]))p=1;
+ if(cat==="Account & Password"&&p===1&&has(["locked out","expired"]))p=2;
+ if(has(["ceo","director","executive","vip"]))p=Math.min(3,p+1);
+ let team=CAT_TEAM[cat];
+ if(has(["server","active directory","group policy","domain controller","backup"]))team="Systems Administration";
+ if(cat==="Security"&&p===3)team="Security Team";
+ const steps=STEPS[cat].slice();
+ if(p===3&&cat!=="Security")steps.unshift("Check whether other users are affected and open a major incident if so.");
+ return{category:cat,priority:PRI[p],team,confidence:conf,steps,response:RESP[cat]};
+}
+
+// ---- storage (guarded) ----
+let tickets=[];
+function load(){try{const r=localStorage.getItem("sd_tickets_v1");if(r)return JSON.parse(r)}catch(e){}return null}
+function save(){try{localStorage.setItem("sd_tickets_v1",JSON.stringify(tickets))}catch(e){}}
+function seed(){
+ const S=[["Amara Okafor","Printer on floor 2 jams on every job","The printer keeps showing a paper jam and nothing prints.","Open"],
+ ["Liam Naidoo","Cannot log in after password expired","I'm locked out of my account since my password expired this morning.","Resolved"],
+ ["Sara Jacobs","VPN will not connect from home","VPN client says connection failed. I'm working from home and cannot reach the file server.","In Progress"],
+ ["Tom Peters","Suspicious email asking for my bank details","I received a phishing email and I clicked a link before realising.","Open"],
+ ["Nadia Khan","Excel keeps crashing","Excel crashes whenever I open the monthly report. Application not responding.","Pending Customer"],
+ ["Ben Archer","Not receiving emails in Outlook","My inbox has not received any emails since yesterday.","Closed"],
+ ["Priya Moodley","Laptop screen cracked","I dropped my laptop and the screen is cracked.","Resolved"],
+ ["Chris Dube","OneDrive not syncing","OneDrive stopped syncing my files to SharePoint.","In Progress"]];
+ return S.map((s,i)=>{const r=classify(s[1],s[2]);const d=new Date(Date.now()-(i*1.3+0.2)*864e5);
+  return{id:"INC-"+(1001+i),date:d.toISOString(),name:s[0],email:s[0].toLowerCase().replace(" ",".")+"@company.com",subject:s[1],desc:s[2],device:"Laptop",os:"Windows 11",status:s[3],...r}});
+}
+tickets=load()||seed();save();
+
+// ---- helpers ----
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=d=>new Date(d).toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+const pri=p=>`<span class="tag ${p}">${p}</span>`;
+const opts=(a,v)=>a.map(x=>`<option ${x===v?"selected":""}>${esc(x)}</option>`).join("");
+function show(v){["dash","new","det","hist"].forEach(x=>$(x).classList.toggle("hide",x!==v));
+ document.querySelectorAll("aside button").forEach(b=>b.classList.toggle("on",b.dataset.v===(v==="det"?"hist":v)));
+ if(v==="dash")renderDash();if(v==="hist")renderHist()}
+document.querySelectorAll("aside button").forEach(b=>b.onclick=()=>show(b.dataset.v));
+
+function renderDash(){
+ const n=tickets.length,open=tickets.filter(t=>["Open","In Progress","Pending Customer"].includes(t.status)).length,
+ res=tickets.filter(t=>["Resolved","Closed"].includes(t.status)).length,hc=tickets.filter(t=>t.priority==="High"||t.priority==="Critical").length;
+ const by=CATS.map(c=>[c,tickets.filter(t=>t.category===c).length]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);
+ const mx=Math.max(1,...by.map(x=>x[1]));
+ const pc=PRI.map(p=>[p,tickets.filter(t=>t.priority===p).length]);
+ const recent=[...tickets].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5);
+ $("dash").innerHTML=`<h2>Dashboard</h2>
+ <div class="grid"><div class="kpi"><b>${n}</b><span>Total tickets</span></div><div class="kpi"><b>${open}</b><span>Open tickets</span></div><div class="kpi"><b>${res}</b><span>Resolved tickets</span></div><div class="kpi" style="border-left-color:var(--crit)"><b>${hc}</b><span>High / Critical</span></div></div>
+ <div class="two"><div class="card"><h3>Tickets by category</h3>${by.map(([c,k])=>`<div class="bar"><span>${esc(c)}</span><i style="width:${k/mx*60}%"></i><span>${k}</span></div>`).join("")||"<p class='note'>No tickets yet.</p>"}</div>
+ <div class="card"><h3>Tickets by priority</h3>${pc.map(([p,k])=>`<div class="bar"><span class="${p}">${p}</span><i style="width:${k/mx*60}%;background:currentColor" class="${p}"></i><span>${k}</span></div>`).join("")}</div></div>
+ <div class="card sc"><h3>Recent tickets</h3><table><thead><tr><th>ID</th><th>Customer</th><th>Subject</th><th>Category</th><th>Priority</th><th>Status</th></tr></thead><tbody>${recent.map(t=>`<tr data-id="${t.id}"><td>${t.id}</td><td>${esc(t.name)}</td><td>${esc(t.subject)}</td><td>${esc(t.category)}</td><td>${pri(t.priority)}</td><td>${t.status}</td></tr>`).join("")}</tbody></table></div>`;
+ $("dash").querySelectorAll("tr[data-id]").forEach(r=>r.onclick=()=>detail(r.dataset.id));
+}
+
+function renderHist(){
+ const q=$("q").value.toLowerCase(),c=$("fc").value,p=$("fp").value,s=$("fs").value;
+ const rows=tickets.filter(t=>(!q||(t.id+t.name+t.subject).toLowerCase().includes(q))&&(!c||t.category===c)&&(!p||t.priority===p)&&(!s||t.status===s)).sort((a,b)=>new Date(b.date)-new Date(a.date));
+ $("tb").innerHTML=rows.map(t=>`<tr data-id="${t.id}"><td>${t.id}</td><td>${fmt(t.date)}</td><td>${esc(t.name)}</td><td>${esc(t.subject)}</td><td>${esc(t.category)}</td><td>${pri(t.priority)}</td><td>${esc(t.team)}</td><td>${t.status}</td></tr>`).join("")||`<tr><td colspan="8" class="note">No tickets match these filters.</td></tr>`;
+ $("tb").querySelectorAll("tr[data-id]").forEach(r=>r.onclick=()=>detail(r.dataset.id));
+}
+$("fc").innerHTML="<option value=''>All categories</option>"+opts(CATS);
+$("fp").innerHTML="<option value=''>All priorities</option>"+opts(PRI);
+$("fs").innerHTML="<option value=''>All statuses</option>"+opts(STAT);
+["q","fc","fp","fs"].forEach(i=>$(i).oninput=renderHist);
+
+function detail(id){
+ const t=tickets.find(x=>x.id===id);if(!t)return;
+ $("det").innerHTML=`<h2>${t.id} · ${esc(t.subject)}</h2>
+ <div class="card"><div class="meta"><div>Customer<b>${esc(t.name)}</b>${esc(t.email)}</div><div>Created<b>${fmt(t.date)}</b></div><div>Device<b>${esc(t.device)} · ${esc(t.os)}</b></div>
+ <div>Classifier confidence<b>${t.confidence}%</b><div class="conf"><i style="width:${t.confidence}%"></i></div></div></div>
+ <label>Description</label><p style="margin-top:0">${esc(t.desc)}</p>
+ <div class="f" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+ <div><label for="ec">Category</label><select id="ec">${opts(CATS,t.category)}</select></div>
+ <div><label for="ep">Priority</label><select id="ep">${opts(PRI,t.priority)}</select></div>
+ <div><label for="et">Assigned team</label><select id="et">${opts(TEAMS,t.team)}</select></div>
+ <div><label for="es">Status</label><select id="es">${opts(STAT,t.status)}</select></div></div>
+ <p class="note" id="sv">Changes save automatically.</p></div>
+ <div class="two"><div class="card"><h3>Recommended troubleshooting</h3><ol id="st"></ol></div>
+ <div class="card"><h3>Suggested customer response</h3><div class="resp" id="rs"></div><p><button class="btn sec" id="cp">Copy response</button></p></div></div>
+ <button class="btn sec" id="bk">Back to ticket history</button>`;
+ const draw=()=>{$("st").innerHTML=t.steps.map(s=>`<li>${esc(s)}</li>`).join("");$("rs").textContent=`Hi ${t.name.split(" ")[0]},\n\nThank you for reporting the issue. ${t.response}\n\nKind regards,\nIT Service Desk`;$("rs").style.whiteSpace="pre-line"};
+ draw();
+ const upd=(k,el)=>$(el).onchange=e=>{t[k]=e.target.value;
+  if(k==="category"){t.team=CAT_TEAM[t.category];t.steps=STEPS[t.category].slice();t.response=RESP[t.category];$("et").value=t.team;draw()}
+  save();$("sv").textContent="Saved.";};
+ upd("category","ec");upd("priority","ep");upd("team","et");upd("status","es");
+ $("bk").onclick=()=>show("hist");
+ $("cp").onclick=()=>{try{navigator.clipboard.writeText($("rs").textContent);$("cp").textContent="Copied"}catch(e){$("cp").textContent="Select text to copy"}};
+ show("det");window.scrollTo(0,0);
+}
+
+function stamp(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}
+$("dd").value=stamp();
+$("ex").onclick=()=>{$("cn").value="Jane Smith";$("ce").value="jane.smith@company.com";$("cs").value="Wi-Fi connected but no websites load";$("cd").value="My laptop is connected to Wi-Fi but I cannot access any websites.";$("dt").value="Laptop";$("os").value="Windows 11"};
+$("go").onclick=()=>{
+ const name=$("cn").value.trim(),email=$("ce").value.trim(),subj=$("cs").value.trim(),desc=$("cd").value.trim();
+ const e=$("err");e.classList.add("hide");
+ if(!name||!subj||!desc||!/^\S+@\S+\.\S+$/.test(email)){e.textContent="Enter a customer name, a valid email, a subject and a problem description.";e.classList.remove("hide");return}
+ const r=classify(subj,desc);
+ const next=Math.max(1000,...tickets.map(t=>parseInt(t.id.slice(4))))+1;
+ const t={id:"INC-"+next,date:$("dd").value?new Date($("dd").value).toISOString():new Date().toISOString(),name,email,subject:subj,desc,device:$("dt").value,os:$("os").value,status:"Open",...r};
+ tickets.push(t);save();
+ ["cn","ce","cs","cd"].forEach(i=>$(i).value="");$("dd").value=stamp();
+ detail(t.id);
+};
+renderDash();
+</script>
+</body>
+</html>
